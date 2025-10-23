@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, computed } from 'vue';
-import type { GameState } from '../stores/game.ts';
+import type { GameState } from '../stores/game_types.ts';
 import { useGameStore } from '../stores/game.ts';
 import EvolveCounter from './EvolveCounter.vue';
 import Card from './Card.vue';

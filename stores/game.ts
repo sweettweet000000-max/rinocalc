@@ -1,70 +1,28 @@
 import { defineStore } from 'pinia';
-
-interface BaseCard {
-    id: number;
-    name: string;
-    cost: number;
-}
-
-export interface FollowerCard extends BaseCard {
-    kind: 'follower';
-    attack: number;
-    hp: number;
-    rush?: boolean;
-    storm?: boolean;
-}
-
-export interface AmuletCard extends BaseCard {
-    kind: 'amulet'; 
-}
-
-export interface SpellCard extends BaseCard {
-    kind: 'spell'; 
-}
-
-export type Card = FollowerCard | AmuletCard | SpellCard;
+import type { Card, GameState, Area, CardActionSet } from './game_types';
+import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
 
 // 初期の手札データ
 const cardList: Card[] = [
-  { id: 1, name: '神秘', kind: 'spell', cost: 0  },
-  { id: 2, name: 'フェアリー', kind: 'follower', cost: 1, attack: 1, hp: 1, rush: true },
-  { id: 3, name: 'メイ', kind: 'follower', cost: 1, attack: 1, hp: 1   },
-  { id: 4, name: '招集', kind: 'spell', cost: 1  },
-  { id: 5, name: '虫の知らせ', kind: 'spell', cost: 1  },
-  { id: 6, name: '急襲', kind: 'spell', cost: 1  },
-  { id: 7, name: '死矢', kind: 'spell', cost: 1  },
-  { id: 8, name: 'リリィ', kind: 'follower', cost: 2, attack: 1, hp: 3  },
-  { id: 9, name: 'テイマー', kind: 'follower', cost: 2, attack: 1, hp: 1   },
-  { id: 10, name: 'カバン', kind: 'follower', cost: 2, attack: 2, hp: 2   },
-  { id: 11, name: '花園', kind: 'spell', cost: 2  },
-  { id: 12, name: '岩', kind: 'amulet', cost: 2  },
-  { id: 13, name: 'リノセウス', kind: 'follower', cost: 3, attack: 0, hp: 2, storm: true  },
-  { id: 14, name: '杖', kind: 'amulet', cost: 3  },
-  { id: 15, name: 'バックウッド', kind: 'follower', cost: 5, attack: 3, hp: 3   },
-  { id: 16, name: 'ベイル', kind: 'follower', cost: 8, attack: 4, hp: 4  },
+    森の神秘,
+    フェアリー,
+    メイ,
+    招集, 
+    虫の知らせ,
+    樹上からの急襲,
+    駆逐の死矢,
+    リリィ,
+    フェアリーテイマー,
+    フェンサーフェアリー,
+    カーバンクル,
+    花園,
+    燐光の岩,
+    リノセウス,
+    ギルネリーゼ,
+    杖,
+    バックウッド,
+    ベイル
 ];
-
-export interface GameState {
-    scenarioName: string;
-    myHP: number;
-    myPP: number;
-    myExtraPP: boolean;
-    myEvolvePoints: number;
-    mySuperEvolvePoints: number;
-    myCombo: number;
-    enemyHP: number;
-    cardList: Card[];
-    hand: Card[];
-    myField: Card[];
-    enemyField: Card[];
-    maxHP: number;
-    maxPP: number;
-    maxFieldSize: number;
-    maxHandSize: number;
-}
-
-// エリアの型定義
-type Area = 'cardList' | 'hand' | 'myField' | 'enemyField' | 'outside';
 
 export const useGameStore = defineStore('game', {
     // === 状態 (State) ===
@@ -196,6 +154,18 @@ export const useGameStore = defineStore('game', {
                     ||
                     cardToMove.kind === "amulet"
                 ){
+                    if(cardToMove.onPlayFromHand){
+                        // 実行に必要な Actions だけを抽出・定義
+                        const actionRunner: CardActionSet = {
+                            changeEnemyHP: this.changeEnemyHP,
+                            removeCard: this.removeCard,
+                            addCard: this.addCard
+                        };
+                        
+                        cardToMove.onPlayFromHand(actionRunner); 
+                    }else{
+                        console.log('play ', cardToMove.name);
+                    }
                     this.myField.push(cardToMove);
                 }
                 

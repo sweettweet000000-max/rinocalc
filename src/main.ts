@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
-import App from './ScenarioPlayer.vue';
+import App from './ScenarioEditor.vue';
 
 const pinia = createPinia(); 
 
