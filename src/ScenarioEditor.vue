@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { reactive, computed } from 'vue';
-import type { GameState } from '../stores/game_types.ts';
+import type { GameState } from '../stores/card.ts';
 import { useGameStore } from '../stores/game.ts';
 import EvolveCounter from './EvolveCounter.vue';
 import Card from './Card.vue';

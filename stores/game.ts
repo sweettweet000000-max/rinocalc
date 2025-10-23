@@ -1,28 +1,41 @@
 import { defineStore } from 'pinia';
-import type { Card, GameState, Area, CardActionSet } from './game_types';
-import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
+import type { CardClass, GameState, Area, CardActionSet } from './card';
+// import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
+
+import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, reconstructCard } from './card';
+
+const cardList: CardClass[] = [
+    
+    new フェアリー(Date.now()),
+    new リリィ(Date.now()),
+    new フェアリーテイマー(Date.now()),
+    new フェンサーフェアリー(Date.now()),
+    new カーバンクル(Date.now())
+    
+];
+
 
 // 初期の手札データ
-const cardList: Card[] = [
-    森の神秘,
-    フェアリー,
-    メイ,
-    招集, 
-    虫の知らせ,
-    樹上からの急襲,
-    駆逐の死矢,
-    リリィ,
-    フェアリーテイマー,
-    フェンサーフェアリー,
-    カーバンクル,
-    花園,
-    燐光の岩,
-    リノセウス,
-    ギルネリーゼ,
-    杖,
-    バックウッド,
-    ベイル
-];
+// const cardList: CardClass[] = [
+//     森の神秘,
+//     フェアリー,
+//     メイ,
+//     招集, 
+//     虫の知らせ,
+//     樹上からの急襲,
+//     駆逐の死矢,
+//     リリィ,
+//     フェアリーテイマー,
+//     フェンサーフェアリー,
+//     カーバンクル,
+//     花園,
+//     燐光の岩,
+//     リノセウス,
+//     ギルネリーゼ,
+//     杖,
+//     バックウッド,
+//     ベイル
+// ];
 
 export const useGameStore = defineStore('game', {
     // === 状態 (State) ===
@@ -49,7 +62,7 @@ export const useGameStore = defineStore('game', {
     getters: {
         handCount: (state) => state.hand.length,
         isMyFieldFull: (state) => state.myField.length >= state.maxFieldSize,
-        getAreaCards: (state) => (area: Area): Card[] => {
+        getAreaCards: (state) => (area: Area): CardClass[] => {
             if (area === 'cardList') return state.cardList;
             if (area === 'hand') return state.hand;
             if (area === 'myField') return state.myField;
@@ -82,7 +95,7 @@ export const useGameStore = defineStore('game', {
          * @param cardData 追加するカードデータ
          * @param targetArea 追加先のエリア名
          */
-        addCard(cardData: Card, targetArea: Area): boolean {
+        addCard(cardData: CardClass, targetArea: Area, ): boolean {
             if (targetArea === 'cardList') {
                 return false;
             }
@@ -116,14 +129,14 @@ export const useGameStore = defineStore('game', {
          * @param targetArea 移動先のエリア名
          */
         moveCard(cardId: number, sourceArea: Area, targetArea: Area) {
-            let cardToMove: Card | undefined;
+            let cardToMove: CardClass | undefined;
 
             if (sourceArea === 'cardList') {
                 cardToMove = this.cardList.find(c => c.id === cardId);
                 if (!cardToMove) return;
 
-                const newCardData = { ...cardToMove, id: Date.now() };
-                this.addCard(newCardData, targetArea);
+                cardToMove.id = Date.now();
+                this.addCard(cardToMove, targetArea);
                 
             } else {
                 // 移動元からカードデータを取得
@@ -145,6 +158,7 @@ export const useGameStore = defineStore('game', {
 
             if (cardToMove) {
                 if (this.myPP < cardToMove.cost) { 
+                    console.log("PPが足りないため、カードを出せません。");
                     return false;
                 }
 
@@ -211,14 +225,31 @@ export const useGameStore = defineStore('game', {
             }
             
             try {
-                // JSON文字列を GameState 型にパースして返す
-                this.$state = JSON.parse(jsonString) as GameState;
-                console.log('Game state loaded successfully.');
-                return true;
-            } catch (e) {
-                console.error('Failed to parse game state JSON from localStorage:', e);
-                return false;
-            }
+                    const rawState = JSON.parse(jsonString); 
+                    
+                    if (rawState.hand) {
+                        rawState.hand = rawState.hand.map((cardData: any) => reconstructCard(cardData));
+                    }
+                    if (rawState.myField) {
+                        rawState.myField = rawState.myField.map((cardData: any) => reconstructCard(cardData));
+                    }
+                    if (rawState.enemyField) {
+                        rawState.enemyField = rawState.enemyField.map((cardData: any) => reconstructCard(cardData));
+                    }
+                    if(rawState.cardList){
+                        rawState.cardList = rawState.cardList.map((cardData: any) => reconstructCard(cardData));
+                    }
+
+                    console.log(rawState);
+
+                    this.$state = rawState as GameState;
+
+                    console.log('Game state loaded successfully.');
+                    return true;
+                } catch (e) {
+                    console.error('Failed to parse or reconstruct game state:', e);
+                    return false;
+                }
         }
     }
 })
