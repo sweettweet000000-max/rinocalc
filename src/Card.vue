@@ -3,7 +3,7 @@ import { defineProps, defineEmits, computed } from 'vue';
 
 // 親コンポーネントから受け取るデータ
 const props = defineProps({
-  id: Number,
+  id: String,
   name: String,
   kind: String,
   cost: Number,

@@ -3,16 +3,16 @@ export type Area = 'cardList' | 'hand' | 'myField' | 'enemyField' | 'outside';
 
 export interface CardActionSet {
     changeEnemyHP: (amount: number) => void;
-    removeCard: (cardId: number, sourceArea: Area) => boolean;
+    removeCard: (cardId: string, sourceArea: Area) => boolean;
     addCard: (cardData: CardClass, targetArea: Area) => boolean;
 }
 
 export abstract class BaseCardClass {
-    public id: number;
+    public id: string;
     public name: string;
     public cost: number;
 
-    constructor(data: { id: number, name: string, cost: number }) {
+    constructor(data: { id: string, name: string, cost: number }) {
         this.id = data.id;
         this.name = data.name;
         this.cost = data.cost;
@@ -67,7 +67,7 @@ export class AmuletCardClass extends BaseCardClass {
 // }
 
 export class フェアリー extends FollowerCardClass {
-    constructor(id: number) {
+    constructor(id: string) {
         super({ id: id, name: 'フェアリー', cost: 1, attack: 1, hp: 1, rush: true });
     }
 }
@@ -110,30 +110,30 @@ export class フェアリー extends FollowerCardClass {
 // }
 
 export class リリィ extends FollowerCardClass {
-    constructor(id: number) {
+    constructor(id: string) {
         super({ id: id, name: 'リリィ', cost: 2, attack: 1, hp: 3 });
     }
 }
 
 export class フェアリーテイマー extends FollowerCardClass {
-    constructor(id: number) {
+    constructor(id: string) {
         super({ id: id, name: 'テイマー', cost: 2, attack: 1, hp: 1 });
     }
 
     public onPlayFromHand(actions: CardActionSet): void {
-        actions.addCard(new フェアリー(Date.now()), 'hand'); 
-        actions.addCard(new フェアリー(Date.now()), 'hand'); 
+        actions.addCard(new フェアリー(crypto.randomUUID()), 'hand'); 
+        actions.addCard(new フェアリー(crypto.randomUUID()), 'hand'); 
     }
 }
 
 export class フェンサーフェアリー extends FollowerCardClass {
-    constructor(id: number) {
+    constructor(id: string) {
         super({ id: id, name: 'フェンサー', cost: 2, attack: 2, hp: 2 });
     }
 }
 
 export class カーバンクル extends FollowerCardClass {
-    constructor(id: number) {
+    constructor(id: string) {
         super({ id: id, name: 'カバン', cost: 2, attack: 2, hp: 2 });
     }
 }
@@ -217,7 +217,7 @@ export function reconstructCard(cardData: any): CardClass {
     }
 
     // 💡 データを使って、正しいクラスのインスタンスを生成する
-    return new cardClass(Date.now()) as CardClass;
+    return new cardClass(crypto.randomUUID()) as CardClass;
 }
 
 export interface GameState {

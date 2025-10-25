@@ -93,9 +93,9 @@ const handleSuperEvolveClick = (index: number) => {
  * @param cardId ドラッグされるカードのID
  * @param sourceArea カードが存在するエリア ('cardList', 'hand', 'myField', 'enemyField')
  */
-const handleDragStart = (event: DragEvent, cardId: number, sourceArea: string) => {
+const handleDragStart = (event: DragEvent, cardId: string, sourceArea: string) => {
     if (event.dataTransfer) {
-        event.dataTransfer.setData('cardId', cardId.toString());
+        event.dataTransfer.setData('cardId', cardId);
         event.dataTransfer.setData('sourceArea', sourceArea);
     }
 };
@@ -118,12 +118,10 @@ const handleDrop = (event: DragEvent, targetArea: string) => {
 
     if (!event.dataTransfer) return;
 
-    const cardIdString = event.dataTransfer.getData('cardId');
+    const cardId = event.dataTransfer.getData('cardId');
     const sourceArea = event.dataTransfer.getData('sourceArea');
 
-    if (!cardIdString || !sourceArea) return;
-
-    const cardId = parseInt(cardIdString);
+    if (!cardId || !sourceArea) return;
 
     store.playCardFromHand(cardId);
 };

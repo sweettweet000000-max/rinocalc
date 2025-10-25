@@ -6,11 +6,11 @@ import { フェアリー , リリィ , フェアリーテイマー , フェン�
 
 const cardList: CardClass[] = [
     
-    new フェアリー(Date.now()),
-    new リリィ(Date.now()),
-    new フェアリーテイマー(Date.now()),
-    new フェンサーフェアリー(Date.now()),
-    new カーバンクル(Date.now())
+    new フェアリー(crypto.randomUUID()),
+    new リリィ(crypto.randomUUID()),
+    new フェアリーテイマー(crypto.randomUUID()),
+    new フェンサーフェアリー(crypto.randomUUID()),
+    new カーバンクル(crypto.randomUUID())
     
 ];
 
@@ -78,7 +78,7 @@ export const useGameStore = defineStore('game', {
          * @param cardId 削除するカードのID
          * @param sourceArea 削除元のエリア名
          */
-        removeCard(cardId: number, sourceArea: Area): boolean {
+        removeCard(cardId: string, sourceArea: Area): boolean {
             const cards = this.getAreaCards(sourceArea);
             const index = cards.findIndex(c => c.id === cardId);
 
@@ -128,14 +128,14 @@ export const useGameStore = defineStore('game', {
          * @param sourceArea 移動元のエリア名
          * @param targetArea 移動先のエリア名
          */
-        moveCard(cardId: number, sourceArea: Area, targetArea: Area) {
+        moveCard(cardId: string, sourceArea: Area, targetArea: Area) {
             let cardToMove: CardClass | undefined;
 
             if (sourceArea === 'cardList') {
                 cardToMove = this.cardList.find(c => c.id === cardId);
                 if (!cardToMove) return;
 
-                cardToMove.id = Date.now();
+                cardToMove.id = crypto.randomUUID();
                 this.addCard(cardToMove, targetArea);
                 
             } else {
@@ -148,7 +148,7 @@ export const useGameStore = defineStore('game', {
             }
         },
 
-        playCardFromHand(cardId: number): boolean {
+        playCardFromHand(cardId: string): boolean {
             if (this.isMyFieldFull) {
                 console.warn('場が満員のため、カードを出せません。');
                 return false;
