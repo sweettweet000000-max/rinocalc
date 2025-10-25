@@ -1,11 +1,30 @@
 // エリアの型定義
 export type Area = 'cardList' | 'hand' | 'myField' | 'enemyField' | 'outside';
+export type CardType = 'any' | 'follower' | 'spell' | 'amulet';
 
 export interface CardActionSet {
     changeEnemyHP: (amount: number) => void;
     removeCard: (cardId: string, sourceArea: Area) => boolean;
     addCard: (cardData: CardClass, targetArea: Area) => boolean;
+    moveCard: (cardId: string, sourceArea: Area, targetArea: Area) => boolean;
+    /**
+     * 場の特定のカードを選択するよう、UIに要求し、結果を待機する。
+     * @param requirements 選択に必要な条件（何枚選ぶか、どんな特性のカードかなど）
+     * @returns ユーザーが選択したカードのIDの配列
+     */
+    requestTargetSelection: (
+        requirements: SelectionRequirements
+    ) => Promise<string[] | null>;
 }
+
+export interface SelectionRequirements {
+    targetKind: CardType;
+    targetArea: Area;
+    count: number;
+    canCancel: boolean;
+}
+
+export type TargetResolver = (selectedIds: string[] | null) => void;
 
 export abstract class BaseCardClass {
     public id: string;
@@ -18,9 +37,10 @@ export abstract class BaseCardClass {
         this.cost = data.cost;
     }
 
-    public onPlayFromHand(actions: CardActionSet): void {
+    public async onPlayFromHand(actions: CardActionSet): Promise<boolean> {
         // デフォルトでは何もしない（能力を持たないカードの場合）
         console.log(`[${this.name}] がプレイされました。特殊効果なし。`);
+        return true;
     }
 }
 
@@ -120,9 +140,10 @@ export class フェアリーテイマー extends FollowerCardClass {
         super({ id: id, name: 'テイマー', cost: 2, attack: 1, hp: 1 });
     }
 
-    public onPlayFromHand(actions: CardActionSet): void {
+    public async onPlayFromHand(actions: CardActionSet): Promise<boolean> {
         actions.addCard(new フェアリー(crypto.randomUUID()), 'hand'); 
         actions.addCard(new フェアリー(crypto.randomUUID()), 'hand'); 
+        return true;
     }
 }
 
@@ -135,6 +156,39 @@ export class フェンサーフェアリー extends FollowerCardClass {
 export class カーバンクル extends FollowerCardClass {
     constructor(id: string) {
         super({ id: id, name: 'カバン', cost: 2, attack: 2, hp: 2 });
+    }
+
+    public async onPlayFromHand(actions: CardActionSet): Promise<boolean> {
+        console.log(`[${this.name}] がプレイされました。ターゲットを選択します...`);
+        
+        const selectedIds = await actions.requestTargetSelection({
+            targetKind: 'any',
+            targetArea: "myField",
+            count: 1,
+            canCancel: true,
+        });
+
+        if(selectedIds && selectedIds?.length == 0){
+            console.log(`ターゲットが存在しないため、特殊効果は発動しません`);
+        }
+        else if (selectedIds && selectedIds.length > 0) {
+            const targetId = selectedIds[0];
+            console.log(`ターゲットカード (${targetId}) に効果を発動します。`);
+            
+            if(!targetId) {
+                console.log("ターゲットを適切に選べませんでした。")
+                return false;
+            }
+
+            // 選択したカードを場から取り除く効果
+            actions.moveCard(targetId, 'myField', 'hand'); 
+        } else {
+            // 選択がキャンセルされた、または失敗した場合の処理
+            console.log("ターゲット選択が完了しませんでした。");
+            return false;
+        }
+
+        return true;
     }
 }
 
@@ -237,4 +291,8 @@ export interface GameState {
     maxPP: number;
     maxFieldSize: number;
     maxHandSize: number;
+
+    isTargeting: Boolean;
+    selectionRequirements: SelectionRequirements;
+    targetResolver: TargetResolver | null;
 }

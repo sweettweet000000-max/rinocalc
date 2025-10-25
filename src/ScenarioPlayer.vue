@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed } from 'vue';
+import { reactive, computed, ref } from 'vue';
 import type { GameState } from '../stores/card.ts';
 import { useGameStore } from '../stores/game.ts';
 import EvolveCounter from './EvolveCounter.vue';
@@ -20,6 +20,10 @@ const mySuperEvolvePoints = computed(() => store.mySuperEvolvePoints);
 const myCombo = computed(() => store.myCombo);
 const maxHP = computed(() => store.maxHP);
 const maxPP = computed(() => store.maxPP);
+
+// ターゲット選択モードかどうかを computed で定義
+const isTargeting = computed(() => store.isTargeting);
+const selectionRequirements = computed(() => store.selectionRequirements);
 
 type Area = 'cardList' | 'hand' | 'myField' | 'enemyField' | 'outside';
 
@@ -113,7 +117,7 @@ const handleDragOver = (event: DragEvent) => {
  * @param event ドロップイベント
  * @param targetArea ドロップされたエリア ('hand', 'myField', 'enemyField')
  */
-const handleDrop = (event: DragEvent, targetArea: string) => {
+const handleDrop = async (event: DragEvent, targetArea: string) => {
     event.preventDefault();
 
     if (!event.dataTransfer) return;
@@ -123,12 +127,50 @@ const handleDrop = (event: DragEvent, targetArea: string) => {
 
     if (!cardId || !sourceArea) return;
 
-    store.playCardFromHand(cardId);
+    await store.playCardFromHand(cardId);
 };
 
 const handleLoad = () => {
     // ユーザーが編集した最新の gameState.value を saveState に渡す
     store.loadState();
+};
+
+const currentSelectionIds = ref<string[]>([]);
+const isValidSelection = computed(() => {
+    return currentSelectionIds.value.length === selectionRequirements.value.count;
+});
+
+// 決定ボタンのクリックハンドラ
+const handleConfirmSelection = (selectedIds: string[] | null) => {
+    store.completeTargetingAction(selectedIds);
+    // バグの原因
+    // currentSelectionIds.value.length = 0; 
+};
+
+// キャンセルボタンのクリックハンドラ
+const handleCancelSelection = () => {
+    store.completeTargetingAction(null);
+    // バグの原因
+    // currentSelectionIds.value.length = 0; 
+};
+
+/**
+ * カードの選択/非選択を切り替える
+ * @param cardId 選択されたカードのID
+ */
+const toggleSelection = (cardId: string) => {
+    const index = currentSelectionIds.value.indexOf(cardId);
+    const requirements = selectionRequirements.value;
+
+    if (index > -1) {
+        currentSelectionIds.value.splice(index, 1);
+    } else {
+        if (currentSelectionIds.value.length < requirements.count) {
+            currentSelectionIds.value.push(cardId);
+        } else if (requirements.count === 1) {
+            currentSelectionIds.value.splice(0, currentSelectionIds.value.length, cardId);
+        }
+    }
 };
 
 </script>
@@ -166,7 +208,33 @@ const handleLoad = () => {
             marker-end="url(#arrowhead)" 
         />
     </svg>
-    <div class="game-board">
+        <div class="game-board">
+            <div v-if="isTargeting" class="target-selection-overlay">
+            <h2>ターゲットを選択してください ({{ selectionRequirements.count }}枚)</h2>
+            
+            <div class="field-card-list">
+                <div 
+                    v-for="card in myField" 
+                    :key="card.id"
+                    class="target-card-item"
+                    :class="{ 'is-selected': currentSelectionIds.includes(card.id) }"
+                    @click="toggleSelection(card.id)"
+                >
+                    {{ card.name }} (ID: {{ card.id }})
+                </div>
+            </div>
+            
+            <button @click="handleConfirmSelection(currentSelectionIds)" 
+                    :disabled="!isValidSelection">
+                決定
+            </button>
+            
+            <button v-if="selectionRequirements.canCancel" 
+                    @click="handleCancelSelection">
+                キャンセル
+            </button>
+        </div>
+
         <h2>場</h2>
         <div 
             class="field-area"

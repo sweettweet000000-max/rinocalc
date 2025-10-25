@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { CardClass, GameState, Area, CardActionSet } from './card';
+import type { CardClass, GameState, Area, CardActionSet, SelectionRequirements, TargetResolver } from './card';
 // import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
 
 import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, reconstructCard } from './card';
@@ -56,6 +56,15 @@ export const useGameStore = defineStore('game', {
         maxPP: 10,
         maxFieldSize: 5,
         maxHandSize: 9,
+
+        isTargeting: false,
+        selectionRequirements: {
+            targetKind: 'any',
+            targetArea: "myField",
+            count: 0,
+            canCancel: true,
+        },
+        targetResolver: null
     }),
 
     // === ゲッター (Getters) ===
@@ -128,12 +137,12 @@ export const useGameStore = defineStore('game', {
          * @param sourceArea 移動元のエリア名
          * @param targetArea 移動先のエリア名
          */
-        moveCard(cardId: string, sourceArea: Area, targetArea: Area) {
+        moveCard(cardId: string, sourceArea: Area, targetArea: Area): boolean {
             let cardToMove: CardClass | undefined;
 
             if (sourceArea === 'cardList') {
                 cardToMove = this.cardList.find(c => c.id === cardId);
-                if (!cardToMove) return;
+                if (!cardToMove) return false;
 
                 cardToMove.id = crypto.randomUUID();
                 this.addCard(cardToMove, targetArea);
@@ -141,14 +150,53 @@ export const useGameStore = defineStore('game', {
             } else {
                 // 移動元からカードデータを取得
                 cardToMove = this.getAreaCards(sourceArea).find(c => c.id === cardId);
-                if (!cardToMove) return;
+                if (!cardToMove) return false;
 
                 this.addCard(cardToMove, targetArea);
                 this.removeCard(cardId, sourceArea);
             }
+
+            return true;
         },
 
-        playCardFromHand(cardId: string): boolean {
+        // ユーザー選択を待つための実装
+        requestTargetSelection(requirements: SelectionRequirements): Promise<string[] | null> {
+            let canTarget = true;
+            switch(requirements.targetArea) {
+                case 'myField':
+                    canTarget = this.myField.length != 0;
+                    requirements.count = Math.min(this.myField.length, requirements.count);
+                    break;
+            }
+
+            if (!canTarget) {
+                return Promise.resolve([]); 
+            }else {
+                return new Promise<string[] | null>((resolve) => {
+                    // 【重要な処理】
+                    this.isTargeting = true;
+                    this.selectionRequirements = requirements;
+                    this.targetResolver = resolve;
+                });
+            }
+        },
+
+        completeTargetingAction(selectedIds: string[] | null): void {
+            if (this.isTargeting && this.targetResolver) {
+                this.targetResolver(selectedIds);
+            
+                this.isTargeting = false;
+                this.selectionRequirements = {
+                    targetKind: 'any',
+                    targetArea: "myField",
+                    count: 0,
+                    canCancel: true,
+                };
+                this.targetResolver = null;
+            }
+        },
+
+        async playCardFromHand(cardId: string): Promise<boolean> {
             if (this.isMyFieldFull) {
                 console.warn('場が満員のため、カードを出せません。');
                 return false;
@@ -162,8 +210,6 @@ export const useGameStore = defineStore('game', {
                     return false;
                 }
 
-                this.hand = this.hand.filter(card => card.id !== cardId);
-
                 if(cardToMove.kind === "follower"
                     ||
                     cardToMove.kind === "amulet"
@@ -173,15 +219,22 @@ export const useGameStore = defineStore('game', {
                         const actionRunner: CardActionSet = {
                             changeEnemyHP: this.changeEnemyHP,
                             removeCard: this.removeCard,
-                            addCard: this.addCard
+                            addCard: this.addCard,
+                            moveCard: this.moveCard,
+                            requestTargetSelection: this.requestTargetSelection
                         };
                         
-                        cardToMove.onPlayFromHand(actionRunner); 
+                        //キャンセルした場合はfalseとなる
+                        if(!await cardToMove.onPlayFromHand(actionRunner)){
+                            return false;
+                        }
                     }else{
                         console.log('play ', cardToMove.name);
                     }
                     this.myField.push(cardToMove);
                 }
+
+                this.hand = this.hand.filter(card => card.id !== cardId);
                 
                 this.myPP -= cardToMove.cost; 
 

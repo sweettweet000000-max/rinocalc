@@ -42,11 +42,12 @@ const superEvolveIndicators = computed(() => {
 
 // 新しいメソッド: クリックイベントを親に通知する
 const handleEvolveClick = (index: number) => {
-    // 実際にトグル処理などを行うのは親コンポーネント
+    console.log("click evolve")
     emit('clickEvolve', index); 
 };
 
 const handleSuperEvolveClick = (index: number) => {
+    console.log("click super evolve")
     emit('clickSuperEvolve', index);
 };
 
