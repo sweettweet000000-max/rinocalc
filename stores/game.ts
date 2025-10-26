@@ -285,19 +285,25 @@ export const useGameStore = defineStore('game', {
             return false;
         },
 
-        executeAttack(attackerId: string, targetCardId: string): void {
+        executeAttack(attackerId: string, targetId: string): void {
             const attacker = this.myField.find(card => card.id === attackerId);
-            const targetCard = this.enemyField.find(card => card.id === targetCardId);
 
-            if(attacker && targetCard){
-                if(attacker.onDamage(targetCard.getAttack())){
-                    this.removeCard(attackerId, 'myField');
-                }
-                if(targetCard.onDamage(attacker.getAttack())){
-                    this.removeCard(targetCardId, 'enemyField');
-                }
+            if(attacker && targetId == 'ENEMY_LEADER'){
+                this.changeEnemyHP(-attacker.getAttack());
+            }
+            else {
+                const target = this.enemyField.find(card => card.id === targetId);
 
-                console.log("攻撃処理完了")
+                if(attacker && target){
+                    if(attacker.onDamage(target.getAttack())){
+                        this.removeCard(attackerId, 'myField');
+                    }
+                    if(target.onDamage(attacker.getAttack())){
+                        this.removeCard(targetId, 'enemyField');
+                    }
+
+                    console.log("攻撃処理完了")
+                }
             }
         },
         

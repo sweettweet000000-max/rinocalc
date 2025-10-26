@@ -23,10 +23,7 @@ const maxPP = computed(() => store.maxPP);
 
 // 敵の場のカードコンポーネントのDOM要素を保持するためのリアクティブなオブジェクトを定義
 const enemyCardElements = ref<Record<string, any>>({});
-onBeforeUpdate(() => {
-    // コンポーネントツリーが更新される前に、既存の参照を空にする
-    enemyCardElements.value = {}; 
-});
+const enemyLeaderElement = ref<HTMLElement | null>(null);
 
 // ターゲット選択モードかどうかを computed で定義
 const isTargeting = computed(() => store.isTargeting);
@@ -107,7 +104,7 @@ const handleAttackEnd = (payload: { endX: number, endY: number }) => {
         return;
     }
 
-    let targetCardId: string | null = null;
+    let targetId: string | 'ENEMY_LEADER' | null = null;
     
     for (const card of store.enemyField) {
         if(card.kind != 'follower') continue;
@@ -117,28 +114,25 @@ const handleAttackEnd = (payload: { endX: number, endY: number }) => {
         if (cardElement instanceof HTMLElement) {
             const rect = cardElement.getBoundingClientRect();
             if (dropX >= rect.left && dropX <= rect.right && dropY >= rect.top && dropY <= rect.bottom) {
-                targetCardId = card.id;
+                targetId = card.id;
                 break;
             }
         }
     }
 
-    if (targetCardId) {
-        console.log(`Attack executed from ${attackerId} to target card ${targetCardId}`);
-        store.executeAttack(attackerId, targetCardId); 
-    } else {
-        // ターゲットが敵の場のカードではない場合（例：敵リーダーへの攻撃）
-        // 既存の document.elementFromPoint ロジックを残すか、
-        // 敵リーダー用に専用のDOM要素と座標を用意する。
-        const targetElement = document.elementFromPoint(payload.endX, payload.endY);
-        
-        // 敵リーダーの要素に 'enemy-leader-area' のようなクラスが付与されていると仮定
-        if (targetElement && targetElement.classList.contains('enemy-leader-area')) {
-             console.log('Attack target: Enemy Leader');
-             // store.executeAttack(attackerId, 'ENEMY_LEADER_ID'); // リーダーのIDなど
-        } else {
-             console.log('Attack cancelled: No valid target found.');
+    if (!targetId && enemyLeaderElement.value) {
+        const leaderRect = enemyLeaderElement.value.getBoundingClientRect();
+
+        if (dropX >= leaderRect.left && dropX <= leaderRect.right && dropY >= leaderRect.top && dropY <= leaderRect.bottom) {
+            targetId = 'ENEMY_LEADER';
         }
+    }
+
+    if (targetId) {
+        console.log(`Attack executed from ${attackerId} to target card ${targetId}`);
+        store.executeAttack(attackerId, targetId); 
+    } else {
+        console.log('Attack cancelled: No valid target found.');
     }
     
     arrowState.cardId = null;
@@ -313,6 +307,14 @@ const toggleSelection = (cardId: string) => {
         />
     </svg>
         <div class="game-board">
+            <div 
+                class="leader-area enemy-leader-area" 
+                ref="enemyLeaderElement"
+                :class="{ 'is-target': !isTargeting }"
+            >
+                <div class="leader-hp">{{ enemyHP }}</div>
+            </div>
+
             <div v-if="isTargeting" class="target-selection-overlay">
             <h2>ターゲットを選択してください ({{ selectionRequirements.count }}枚)</h2>
             
@@ -449,6 +451,38 @@ const toggleSelection = (cardId: string) => {
   flex-grow: 1; 
   padding: 20px;
   padding-right: 20px; 
+}
+.leader-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  margin: 0 auto 20px auto;
+  width: 100px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: sans-serif;
+  user-select: none;
+}
+.enemy-leader-area {
+  background-color: #c0392b;
+  color: white;
+  border: 3px solid #700;
+  cursor: crosshair;
+  transition: box-shadow 0.2s;
+}
+.enemy-leader-area:hover {
+  box-shadow: 0 4px 15px rgba(255, 0, 0, 0.5); 
+}
+.leader-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.leader-hp {
+    font-size: 1.8em;
+    font-weight: bold;
 }
 .status-panel {
     width: 100px;
