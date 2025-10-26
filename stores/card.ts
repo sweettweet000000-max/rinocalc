@@ -50,6 +50,17 @@ export abstract class BaseCardClass {
         console.log(`[${this.name}] がアクトされました。特殊効果なし。`);
         return false;
     }
+
+    //ダメージを受けるときの動作
+    //破壊される場合trueを返す
+    public onDamage(damage: number): boolean {
+        return false;
+    }
+
+    //ダメージを与えるときの動作
+    public getAttack(): number {
+        return 0;
+    }
 }
 
 export class FollowerCardClass extends BaseCardClass {
@@ -65,6 +76,17 @@ export class FollowerCardClass extends BaseCardClass {
         this.hp = data.hp;
         this.rush = data.rush;
         this.storm = data.storm;
+    }
+
+    //ダメージを受けるときの動作
+    public onDamage(damage: number): boolean {
+        this.hp -= damage;
+        return this.hp <= 0;
+    }
+
+    //ダメージを与えるときの動作
+    public getAttack(): number {
+        return this.attack;
     }
 }
 
@@ -287,8 +309,14 @@ export class 杖 extends AmuletCardClass {
 //     hp: 4
 // }
 
+export class 人形 extends FollowerCardClass {
+    constructor(id: string) {
+        super({ id: id, name: '人形', cost: 0, attack: 1, hp: 1 });
+    }
+}
 
-export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル | 杖 | リノセウス;
+
+export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル | 杖 | リノセウス | 人形;
 
 export const CardConstructorMap: Record<string, new (data: any) => BaseCardClass> = {
     'フェアリー': フェアリー,
@@ -297,7 +325,8 @@ export const CardConstructorMap: Record<string, new (data: any) => BaseCardClass
     'フェンサー': フェンサーフェアリー,
     'カバン': カーバンクル,
     '杖': 杖,
-    'リノセウス': リノセウス
+    'リノセウス': リノセウス,
+    '人形': 人形
 };
 
 // JSONデータ（メソッドを持たないオブジェクト）をクラスインスタンスに変換する関数

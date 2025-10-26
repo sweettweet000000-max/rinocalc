@@ -102,7 +102,8 @@ const abilityShadowClass = computed(() => {
   <div
     class="card"
     :class="[kindClass, abilityShadowClass]"
-    :draggable="!props.isOnField" @dragstart="handleDragStart"
+    :draggable="!props.isOnField"
+    @dragstart="handleDragStart"
     @mousedown="handleMouseDown"
   >
     <div class="card-stat card-cost">{{ cost }}</div>

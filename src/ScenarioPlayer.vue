@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed, ref } from 'vue';
+import { reactive, computed, ref, onBeforeUpdate } from 'vue';
 import type { GameState } from '../stores/card.ts';
 import { useGameStore } from '../stores/game.ts';
 import EvolveCounter from './EvolveCounter.vue';
@@ -21,15 +21,25 @@ const myCombo = computed(() => store.myCombo);
 const maxHP = computed(() => store.maxHP);
 const maxPP = computed(() => store.maxPP);
 
+// 敵の場のカードコンポーネントのDOM要素を保持するためのリアクティブなオブジェクトを定義
+const enemyCardElements = ref<Record<string, any>>({});
+onBeforeUpdate(() => {
+    // コンポーネントツリーが更新される前に、既存の参照を空にする
+    enemyCardElements.value = {}; 
+});
+
 // ターゲット選択モードかどうかを computed で定義
 const isTargeting = computed(() => store.isTargeting);
 const selectionRequirements = computed(() => store.selectionRequirements);
 
 type Area = 'cardList' | 'hand' | 'myField' | 'enemyField' | 'outside';
+type ArrowSourceType = 'card' | 'evolve' | 'superEvolve' | null;
 
 interface ArrowState {
   isVisible: boolean;
-  cardId: number | null;
+  cardId: string | null;
+  sourceType: string | null;
+  color: string | undefined;
   startX: number;
   startY: number;
   endX: number;
@@ -39,6 +49,8 @@ interface ArrowState {
 const arrowState = reactive<ArrowState>({
   isVisible: false,
   cardId: null,
+  sourceType: null,
+  color: undefined,
   startX: 0,
   startY: 0,
   endX: 0,
@@ -65,12 +77,13 @@ const arrowPath = computed(() => {
   return `M ${startX} ${startY} Q ${cpx} ${cpy} ${endX} ${endY}`;
 });
 
-const handleAttackStart = (payload: { cardId: number, startX: number, startY: number, endX: number, endY: number }) => {
+const handleAttackStart = (payload: { cardId: string, startX: number, startY: number, endX: number, endY: number }) => {
     arrowState.isVisible = true;
     arrowState.cardId = payload.cardId;
+    arrowState.sourceType = 'card';
+    arrowState.color = 'yellow';
     arrowState.startX = payload.startX;
     arrowState.startY = payload.startY;
-    // 初期座標はカーソル位置に設定
     arrowState.endX = payload.endX;
     arrowState.endY = payload.endY;
 };
@@ -85,18 +98,76 @@ const handleAttacking = (payload: { endX: number, endY: number }) => {
 
 const handleAttackEnd = (payload: { endX: number, endY: number }) => {
     arrowState.isVisible = false;
+    const dropX = payload.endX;
+    const dropY = payload.endY;
     
-    // ターゲット判定ロジック
-    // 例: payload.endX, payload.endY が敵カードの領域内にあるか判定する
-    const targetElement = document.elementFromPoint(payload.endX, payload.endY);
+    const attackerId = arrowState.cardId;
+    if (!attackerId) {
+        console.log('Attack cancelled: No attacker ID.');
+        return;
+    }
+
+    let targetCardId: string | null = null;
     
-    if (targetElement && targetElement.classList.contains('enemy-card')) {
+    for (const card of store.enemyField) {
+        if(card.kind != 'follower') continue;
+        const cardComponent = enemyCardElements.value[card.id];
+        const cardElement = cardComponent?.$el;
+
+        if (cardElement instanceof HTMLElement) {
+            const rect = cardElement.getBoundingClientRect();
+            if (dropX >= rect.left && dropX <= rect.right && dropY >= rect.top && dropY <= rect.bottom) {
+                targetCardId = card.id;
+                break;
+            }
+        }
+    }
+
+    if (targetCardId) {
+        console.log(`Attack executed from ${attackerId} to target card ${targetCardId}`);
+        store.executeAttack(attackerId, targetCardId); 
     } else {
-        // 攻撃キャンセル
-        console.log('Attack cancelled.');
+        // ターゲットが敵の場のカードではない場合（例：敵リーダーへの攻撃）
+        // 既存の document.elementFromPoint ロジックを残すか、
+        // 敵リーダー用に専用のDOM要素と座標を用意する。
+        const targetElement = document.elementFromPoint(payload.endX, payload.endY);
+        
+        // 敵リーダーの要素に 'enemy-leader-area' のようなクラスが付与されていると仮定
+        if (targetElement && targetElement.classList.contains('enemy-leader-area')) {
+             console.log('Attack target: Enemy Leader');
+             // store.executeAttack(attackerId, 'ENEMY_LEADER_ID'); // リーダーのIDなど
+        } else {
+             console.log('Attack cancelled: No valid target found.');
+        }
     }
     
     arrowState.cardId = null;
+};
+
+const handleEvolveDragStart = (payload: { sourceType: string, startX: number, startY: number, endX: number, endY: number }) => {
+    arrowState.isVisible = true;
+    arrowState.sourceType = payload.sourceType;
+    arrowState.color = payload.sourceType == 'evolve' ? '#ffae00' : '#ff00f2';
+    arrowState.startX = payload.startX;
+    arrowState.startY = payload.startY;
+    arrowState.endX = payload.endX;
+    arrowState.endY = payload.endY;
+};
+
+const handleEvolveDragEnd = (payload: { endX: number, endY: number }) => {
+    arrowState.isVisible = false;
+    
+    // ここで進化対象の判定ロジックを実装します。
+    // 例: 場に出ている自分のフォロワーをターゲットにしたか
+    const targetElement = document.elementFromPoint(payload.endX, payload.endY);
+    
+    if (targetElement && targetElement.closest('.field-area')) {
+        console.log('Evolve Drag End: Target is Field Area. (ここで進化対象のカードを特定し、進化処理を呼び出す)');
+    } else {
+        console.log('Evolve Drag End: Target is outside or invalid. (進化キャンセル)');
+    }
+    
+    arrowState.sourceType = null;
 };
 
 // EvolveCounterからイベントを受け取るハンドラ
@@ -229,13 +300,13 @@ const toggleSelection = (cardId: string) => {
     >
         <defs>
             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="yellow" />
+                <polygon points="0 0, 10 3.5, 0 7" :fill="arrowState.color" />
             </marker>
         </defs>
 
         <path
             :d="arrowPath"
-            stroke="yellow"
+            :stroke="arrowState.color"
             stroke-width="4"
             fill="none"
             marker-end="url(#arrowhead)" 
@@ -279,6 +350,7 @@ const toggleSelection = (cardId: string) => {
             :name="card.name"
             :kind="card.kind"
             :cost="card.cost"
+            :ref="(el) => { if (el) enemyCardElements[card.id] = el }"
             v-bind="card.kind === 'follower' ? { attack: card.attack, hp: card.hp } : {}"
         />
         </div>
@@ -314,7 +386,10 @@ const toggleSelection = (cardId: string) => {
             :evolve="myEvolvePoints"
             :super-evolve="mySuperEvolvePoints"
             @click-evolve="handleEvolveClick" 
-            @click-super-evolve="handleSuperEvolveClick" 
+            @click-super-evolve="handleSuperEvolveClick"
+            @drag-start-evolve="handleEvolveDragStart" 
+            @dragging-evolve="handleAttacking"
+            @drag-end-evolve="handleEvolveDragEnd"
         />
 
         <h2>手札 ({{ store.handCount }}枚)</h2>

@@ -5,6 +5,9 @@ import { defineEmits, defineProps, computed } from 'vue';
 const emit = defineEmits<{
   (e: 'clickEvolve', index: number): void
   (e: 'clickSuperEvolve', index: number): void
+  (e: 'dragStartEvolve', payload: { sourceType: string, startX: number, startY: number, endX: number, endY: number }): void
+  (e: 'draggingEvolve', payload: { endX: number, endY: number }): void
+  (e: 'dragEndEvolve', payload: { endX: number, endY: number }): void
 }>()
 
 const props = defineProps({
@@ -50,11 +53,79 @@ const handleSuperEvolveClick = (index: number) => {
     emit('clickSuperEvolve', index);
 };
 
+let isDraggingEvolve = false;
+let isDraggingSuperEvolve = false;
+
+const isEvolveGroupClickable = computed(() => {
+    return props.evolve > 0 || props.isAlwaysClickable;
+});
+
+const isSuperEvolveGroupClickable = computed(() => {
+    return props.superEvolve > 0 || props.isAlwaysClickable;
+});
+
+const startDrag = (event: MouseEvent, type: 'evolve' | 'superEvolve') => {
+  // 標準のドラッグアンドドロップをキャンセル
+  event.preventDefault();
+
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+  
+  // ドラッグ開始点を要素の中心に設定
+  const startX = rect.left + rect.width / 2;
+  const startY = rect.top + rect.height / 2;
+  
+  const payload = {
+    sourceType: type,
+    startX, 
+    startY, 
+    endX: event.clientX, 
+    endY: event.clientY 
+  };
+
+  if (type === 'evolve') {
+    isDraggingEvolve = true;
+  } else {
+    isDraggingSuperEvolve = true;
+  }
+    
+  // ドラッグ開始イベントを親に通知
+  emit('dragStartEvolve', payload);
+
+  // グローバルリスナーを追加して、マウス移動とマウスアップを追跡
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
+
+const handleMouseMove = (event: MouseEvent) => {
+  if (isDraggingEvolve || isDraggingSuperEvolve) {
+    // ドラッグ移動イベントを親に通知
+    emit('draggingEvolve', { endX: event.clientX, endY: event.clientY });
+  }
+};
+
+const handleMouseUp = (event: MouseEvent) => {
+  if (isDraggingEvolve || isDraggingSuperEvolve) {
+    // ドラッグ終了とターゲット判定を親に通知
+    emit('dragEndEvolve', { endX: event.clientX, endY: event.clientY });
+    
+    // 状態をリセットし、グローバルリスナーを削除
+    isDraggingEvolve = false;
+    isDraggingSuperEvolve = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }
+};
+
+const handleEvolveMouseDown = (event: MouseEvent) => startDrag(event, 'evolve');
+const handleSuperEvolveMouseDown = (event: MouseEvent) => startDrag(event, 'superEvolve');
+
 </script>
 
 <template>
   <div class="evolve-indicators">
-    <div class="indicator-group evolve">
+    <div class="indicator-group evolve"
+      @mousedown="isEvolveGroupClickable && handleEvolveMouseDown($event)">
       <span class="label">進化</span>
       <div class="lights">
         <div 
@@ -67,7 +138,9 @@ const handleSuperEvolveClick = (index: number) => {
       </div>
     </div>
 
-    <div class="indicator-group super-evolve">
+    <div class="indicator-group super-evolve"
+      @mousedown="isSuperEvolveGroupClickable && handleSuperEvolveMouseDown($event)"
+    >
       <span class="label">超進化</span>
       <div class="lights">
         <div 

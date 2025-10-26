@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import type { CardClass, GameState, Area, CardActionSet, SelectionRequirements, TargetResolver } from './card';
 // import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
 
-import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, 杖, リノセウス, reconstructCard } from './card';
+import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, 杖, リノセウス, 人形, reconstructCard } from './card';
 
 const cardList: CardClass[] = [
     
@@ -12,7 +12,8 @@ const cardList: CardClass[] = [
     new フェンサーフェアリー(crypto.randomUUID()),
     new カーバンクル(crypto.randomUUID()),
     new 杖(crypto.randomUUID()),
-    new リノセウス(crypto.randomUUID())
+    new リノセウス(crypto.randomUUID()),
+    new 人形(crypto.randomUUID())
     
 ];
 
@@ -282,6 +283,22 @@ export const useGameStore = defineStore('game', {
             // カードが見つからなかった場合
             console.error("カードが見つかりません");
             return false;
+        },
+
+        executeAttack(attackerId: string, targetCardId: string): void {
+            const attacker = this.myField.find(card => card.id === attackerId);
+            const targetCard = this.enemyField.find(card => card.id === targetCardId);
+
+            if(attacker && targetCard){
+                if(attacker.onDamage(targetCard.getAttack())){
+                    this.removeCard(attackerId, 'myField');
+                }
+                if(targetCard.onDamage(attacker.getAttack())){
+                    this.removeCard(targetCardId, 'enemyField');
+                }
+
+                console.log("攻撃処理完了")
+            }
         },
         
         /**
