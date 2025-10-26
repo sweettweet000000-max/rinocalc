@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import type { CardClass, GameState, Area, CardActionSet, SelectionRequirements, TargetResolver } from './card';
 // import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
 
-import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, reconstructCard } from './card';
+import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, 杖, reconstructCard } from './card';
 
 const cardList: CardClass[] = [
     
@@ -10,7 +10,8 @@ const cardList: CardClass[] = [
     new リリィ(crypto.randomUUID()),
     new フェアリーテイマー(crypto.randomUUID()),
     new フェンサーフェアリー(crypto.randomUUID()),
-    new カーバンクル(crypto.randomUUID())
+    new カーバンクル(crypto.randomUUID()),
+    new 杖(crypto.randomUUID())
     
 ];
 
@@ -61,8 +62,9 @@ export const useGameStore = defineStore('game', {
         selectionRequirements: {
             targetKind: 'any',
             targetArea: "myField",
+            targetExceptions: [],
             count: 0,
-            canCancel: true,
+            canCancel: true
         },
         targetResolver: null
     }),
@@ -164,7 +166,9 @@ export const useGameStore = defineStore('game', {
             let canTarget = true;
             switch(requirements.targetArea) {
                 case 'myField':
-                    canTarget = this.myField.length != 0;
+                    canTarget = this.myField.filter(
+                        (card) => !requirements.targetExceptions.includes(card.id)
+                    ).length != 0;
                     requirements.count = Math.min(this.myField.length, requirements.count);
                     break;
             }
@@ -189,8 +193,9 @@ export const useGameStore = defineStore('game', {
                 this.selectionRequirements = {
                     targetKind: 'any',
                     targetArea: "myField",
+                    targetExceptions: [],
                     count: 0,
-                    canCancel: true,
+                    canCancel: true
                 };
                 this.targetResolver = null;
             }
@@ -234,7 +239,7 @@ export const useGameStore = defineStore('game', {
                     this.myField.push(cardToMove);
                 }
 
-                this.hand = this.hand.filter(card => card.id !== cardId);
+                this.removeCard(cardId, 'hand');
                 
                 this.myPP -= cardToMove.cost; 
 
@@ -244,6 +249,35 @@ export const useGameStore = defineStore('game', {
             }
             
             // カードが見つからなかった場合
+            console.error("カードが見つかりません");
+            return false;
+        },
+
+        async actCardOnField(cardId: string): Promise<boolean> {
+            const cardToMove = this.myField.find(card => card.id === cardId);
+
+            if (cardToMove && cardToMove.onActOnField) {
+                // 実行に必要な Actions だけを抽出・定義
+                const actionRunner: CardActionSet = {
+                    changeEnemyHP: this.changeEnemyHP,
+                    removeCard: this.removeCard,
+                    addCard: this.addCard,
+                    moveCard: this.moveCard,
+                    requestTargetSelection: this.requestTargetSelection
+                };
+                
+                //キャンセルした場合はfalseとなる
+                if(!await cardToMove.onActOnField(actionRunner)){
+                    return false;
+                }
+
+                this.removeCard(cardId, 'myField');
+                
+                return true; // 成功
+            }
+            
+            // カードが見つからなかった場合
+            console.error("カードが見つかりません");
             return false;
         },
         

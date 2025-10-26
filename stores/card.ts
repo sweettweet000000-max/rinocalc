@@ -20,6 +20,7 @@ export interface CardActionSet {
 export interface SelectionRequirements {
     targetKind: CardType;
     targetArea: Area;
+    targetExceptions: string[];
     count: number;
     canCancel: boolean;
 }
@@ -40,6 +41,12 @@ export abstract class BaseCardClass {
     public async onPlayFromHand(actions: CardActionSet): Promise<boolean> {
         // デフォルトでは何もしない（能力を持たないカードの場合）
         console.log(`[${this.name}] がプレイされました。特殊効果なし。`);
+        return true;
+    }
+
+    public async onActOnField(actions: CardActionSet): Promise<boolean> {
+        // デフォルトでは何もしない（能力を持たないカードの場合）
+        console.log(`[${this.name}] がアクトされました。特殊効果なし。`);
         return true;
     }
 }
@@ -164,8 +171,9 @@ export class カーバンクル extends FollowerCardClass {
         const selectedIds = await actions.requestTargetSelection({
             targetKind: 'any',
             targetArea: "myField",
+            targetExceptions: [this.id],
             count: 1,
-            canCancel: true,
+            canCancel: true
         });
 
         if(selectedIds && selectedIds?.length == 0){
@@ -225,12 +233,42 @@ export class カーバンクル extends FollowerCardClass {
 //     hp: 3
 // }
 
-// export const 杖: AmuletCard = {
-//     id: 16,
-//     name: '杖', 
-//     kind: 'amulet', 
-//     cost: 3
-// }
+export class 杖 extends AmuletCardClass {
+    constructor(id: string) {
+        super({ id: id, name: '杖', cost: 3});
+    }
+
+    public async onActOnField(actions: CardActionSet): Promise<boolean> {
+        console.log(`[${this.name}] がアクトされました。ターゲットを選択します...`);
+        
+        const selectedIds = await actions.requestTargetSelection({
+            targetKind: 'any',
+            targetArea: "myField",
+            targetExceptions: [this.id],
+            count: 1,
+            canCancel: true
+        });
+
+        if (selectedIds && selectedIds.length > 0) {
+            const targetId = selectedIds[0];
+            console.log(`ターゲットカード (${targetId}) に効果を発動します。`);
+            
+            if(!targetId) {
+                console.log("ターゲットを適切に選べませんでした。")
+                return false;
+            }
+
+            // 選択したカードを場から取り除く効果
+            actions.moveCard(targetId, 'myField', 'hand'); 
+        } else {
+            // 選択がキャンセルされた、または失敗した場合の処理
+            console.log("ターゲット選択が完了しませんでした。");
+            return false;
+        }
+
+        return true;
+    }
+}
 
 // export const バックウッド: FollowerCard = {
 //     id: 17,
@@ -251,14 +289,15 @@ export class カーバンクル extends FollowerCardClass {
 // }
 
 
-export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル;
+export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル | 杖;
 
 export const CardConstructorMap: Record<string, new (data: any) => BaseCardClass> = {
     'フェアリー': フェアリー,
     'リリィ': リリィ,
     'テイマー': フェアリーテイマー,
     'フェンサー': フェンサーフェアリー,
-    'カバン': カーバンクル
+    'カバン': カーバンクル,
+    '杖': 杖
 };
 
 // JSONデータ（メソッドを持たないオブジェクト）をクラスインスタンスに変換する関数

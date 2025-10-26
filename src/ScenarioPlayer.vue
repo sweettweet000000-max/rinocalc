@@ -130,6 +130,11 @@ const handleDrop = async (event: DragEvent, targetArea: string) => {
     await store.playCardFromHand(cardId);
 };
 
+const handleRightClick = async (cardId: string) => {
+    console.log("rightclicked", cardId);
+    await store.actCardOnField(cardId);
+}
+
 const handleLoad = () => {
     // ユーザーが編集した最新の gameState.value を saveState に渡す
     store.loadState();
@@ -138,6 +143,18 @@ const handleLoad = () => {
 const currentSelectionIds = ref<string[]>([]);
 const isValidSelection = computed(() => {
     return currentSelectionIds.value.length === selectionRequirements.value.count;
+});
+const targetableList = computed(() => {
+    // ターゲットエリアが 'myField' でない場合は、空の配列を返す
+    if (selectionRequirements.value.targetArea !== 'myField') {
+        return [];
+    }
+
+    let targetableList = myField;
+
+    const exceptions = selectionRequirements.value.targetExceptions || [];
+
+    return targetableList.value.filter((card) => !exceptions.includes(card.id));
 });
 
 // 決定ボタンのクリックハンドラ
@@ -178,6 +195,7 @@ const toggleSelection = (cardId: string) => {
 <template>
   <div 
     class="game-container"
+    @contextmenu.prevent
   > 
     <svg 
         v-if="arrowState.isVisible" 
@@ -214,7 +232,7 @@ const toggleSelection = (cardId: string) => {
             
             <div class="field-card-list">
                 <div 
-                    v-for="card in myField" 
+                    v-for="card in targetableList" 
                     :key="card.id"
                     class="target-card-item"
                     :class="{ 'is-selected': currentSelectionIds.includes(card.id) }"
@@ -270,6 +288,7 @@ const toggleSelection = (cardId: string) => {
                 @drag-start-attack="handleAttackStart"
                 @dragging-attack="handleAttacking"
                 @drag-end-attack="handleAttackEnd"
+                @right-click="handleRightClick"
                 v-bind="card.kind === 'follower' ? { attack: card.attack, hp: card.hp, rush: card.rush, storm: card.storm} : {}"
             />
         </div>

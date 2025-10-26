@@ -11,10 +11,10 @@ const props = defineProps({
   hp: Number,
   rush: Boolean,
   storm: Boolean,
-  isOnField: Boolean,
+  isOnField: Boolean
 });
 
-const emit = defineEmits(['drag-start-attack', 'dragging-attack', 'drag-end-attack']);
+const emit = defineEmits(['drag-start-attack', 'dragging-attack', 'drag-end-attack', 'right-click']);
 
 // **【パターン1: 通常ドラッグ（プレイ）】**
 const handleDragStart = (event: DragEvent) => {
@@ -31,10 +31,10 @@ const handleDragStart = (event: DragEvent) => {
 let isAttacking = false;
 
 const handleMouseDown = (event: MouseEvent) => {
-  // 場にあり、フォロワーであり、攻撃可能な状態かチェック
-  if (props.isOnField && (props.rush || props.storm)) {
+  // 左クリックで、場にあり、フォロワーであり、攻撃可能な状態かチェック
+  if (event.button == 0 && props.isOnField && (props.rush || props.storm)) {
     isAttacking = true;
-    event.preventDefault(); // これが重要！ブラウザ標準のドラッグを停止し、幽霊表示をブロックする
+    event.preventDefault();
 
     // カードの中心座標を取得 (矢印の始点)
     const cardElement = event.currentTarget as HTMLElement;
@@ -54,6 +54,11 @@ const handleMouseDown = (event: MouseEvent) => {
     // グローバルリスナーを追加
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+  }
+
+  if(event.button == 2 && props.isOnField){
+    event.preventDefault();
+    emit('right-click', props.id);
   }
 };
 
