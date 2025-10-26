@@ -45,8 +45,25 @@ const arrowState = reactive<ArrowState>({
   endY: 0,
 });
 
+const arrowPath = computed(() => {
+  if (!arrowState.isVisible) return '';
 
-// カードコンポーネントからのイベントハンドラ
+  const { startX, startY, endX, endY } = arrowState;
+
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const curveIntensity = Math.min(distance * 0.4, 150);
+  
+  let cpx = midX;
+  let cpy = midY - curveIntensity;
+
+  return `M ${startX} ${startY} Q ${cpx} ${cpy} ${endX} ${endY}`;
+});
 
 const handleAttackStart = (payload: { cardId: number, startX: number, startY: number, endX: number, endY: number }) => {
     arrowState.isVisible = true;
@@ -216,13 +233,11 @@ const toggleSelection = (cardId: string) => {
             </marker>
         </defs>
 
-        <line
-            :x1="arrowState.startX"
-            :y1="arrowState.startY"
-            :x2="arrowState.endX"
-            :y2="arrowState.endY"
+        <path
+            :d="arrowPath"
             stroke="yellow"
             stroke-width="4"
+            fill="none"
             marker-end="url(#arrowhead)" 
         />
     </svg>

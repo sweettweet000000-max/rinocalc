@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { isLabeledStatement } from 'typescript';
 import { defineEmits, defineProps, computed } from 'vue';
 
 // Emitsの定義を追加

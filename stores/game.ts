@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import type { CardClass, GameState, Area, CardActionSet, SelectionRequirements, TargetResolver } from './card';
 // import { フェアリー, 森の神秘, メイ, 招集, 虫の知らせ, 樹上からの急襲, 駆逐の死矢, リリィ, フェアリーテイマー, フェンサーフェアリー, カーバンクル, 花園, 燐光の岩, リノセウス, ギルネリーゼ, 杖, バックウッド, ベイル } from './card';
 
-import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, 杖, reconstructCard } from './card';
+import { フェアリー , リリィ , フェアリーテイマー , フェンサーフェアリー , カーバンクル, 杖, リノセウス, reconstructCard } from './card';
 
 const cardList: CardClass[] = [
     
@@ -11,7 +11,8 @@ const cardList: CardClass[] = [
     new フェアリーテイマー(crypto.randomUUID()),
     new フェンサーフェアリー(crypto.randomUUID()),
     new カーバンクル(crypto.randomUUID()),
-    new 杖(crypto.randomUUID())
+    new 杖(crypto.randomUUID()),
+    new リノセウス(crypto.randomUUID())
     
 ];
 
@@ -226,7 +227,8 @@ export const useGameStore = defineStore('game', {
                             removeCard: this.removeCard,
                             addCard: this.addCard,
                             moveCard: this.moveCard,
-                            requestTargetSelection: this.requestTargetSelection
+                            requestTargetSelection: this.requestTargetSelection,
+                            myCombo: this.myCombo
                         };
                         
                         //キャンセルした場合はfalseとなる
@@ -263,7 +265,8 @@ export const useGameStore = defineStore('game', {
                     removeCard: this.removeCard,
                     addCard: this.addCard,
                     moveCard: this.moveCard,
-                    requestTargetSelection: this.requestTargetSelection
+                    requestTargetSelection: this.requestTargetSelection,
+                    myCombo: this.myCombo
                 };
                 
                 //キャンセルした場合はfalseとなる

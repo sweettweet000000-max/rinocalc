@@ -16,7 +16,6 @@ const props = defineProps({
 
 const emit = defineEmits(['drag-start-attack', 'dragging-attack', 'drag-end-attack', 'right-click']);
 
-// **【パターン1: 通常ドラッグ（プレイ）】**
 const handleDragStart = (event: DragEvent) => {
   // 攻撃モードに入っていない、かつプレイ可能な場合のみ標準D&Dを許可
   if (isAttacking || props.isOnField) {
@@ -27,7 +26,6 @@ const handleDragStart = (event: DragEvent) => {
   event.dataTransfer!.setData('cardId', String(props.id)); 
 };
 
-// **【パターン2: カスタムドラッグ（攻撃）】**
 let isAttacking = false;
 
 const handleMouseDown = (event: MouseEvent) => {

@@ -7,6 +7,7 @@ export interface CardActionSet {
     removeCard: (cardId: string, sourceArea: Area) => boolean;
     addCard: (cardData: CardClass, targetArea: Area) => boolean;
     moveCard: (cardId: string, sourceArea: Area, targetArea: Area) => boolean;
+    myCombo: number;
     /**
      * 場の特定のカードを選択するよう、UIに要求し、結果を待機する。
      * @param requirements 選択に必要な条件（何枚選ぶか、どんな特性のカードかなど）
@@ -47,7 +48,7 @@ export abstract class BaseCardClass {
     public async onActOnField(actions: CardActionSet): Promise<boolean> {
         // デフォルトでは何もしない（能力を持たないカードの場合）
         console.log(`[${this.name}] がアクトされました。特殊効果なし。`);
-        return true;
+        return false;
     }
 }
 
@@ -65,16 +66,13 @@ export class FollowerCardClass extends BaseCardClass {
         this.rush = data.rush;
         this.storm = data.storm;
     }
-
-    // 💡 攻撃時効果などのロジックをここにonAttack()メソッドとして追加できます
-    // public onAttack(target: FollowerCardClass, actions: CardActionSet): void { ... }
 }
 
 export class SpellCardClass extends BaseCardClass {
     public kind: 'spell' = 'spell';
 
     constructor(data: any) {
-        super(data); // BaseCardClassのプロパティを初期化
+        super(data);
     }
 }
 
@@ -82,7 +80,7 @@ export class AmuletCardClass extends BaseCardClass {
     public kind: 'amulet' = 'amulet';
 
     constructor(data: any) {
-        super(data); // BaseCardClassのプロパティを初期化
+        super(data);
     }
 }
 
@@ -214,15 +212,16 @@ export class カーバンクル extends FollowerCardClass {
 //     cost: 2
 // }
 
-// export const リノセウス: FollowerCard = {
-//     id: 14,
-//     name: 'リノセウス',
-//     kind: 'follower', 
-//     cost: 3, 
-//     attack: 0, 
-//     hp: 2, 
-//     storm: true 
-// }
+export class リノセウス extends FollowerCardClass {
+    constructor(id: string) {
+        super({ id: id, name: 'リノセウス', cost: 3, attack: 0, hp: 2, storm: true });
+    }
+
+    public async onPlayFromHand(actions: CardActionSet): Promise<boolean> {
+        this.attack = actions.myCombo + 1;
+        return true;
+    }
+}
 
 // export const ギルネリーゼ: FollowerCard = {
 //     id: 15,
@@ -289,7 +288,7 @@ export class 杖 extends AmuletCardClass {
 // }
 
 
-export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル | 杖;
+export type CardClass = フェアリー | リリィ | フェアリーテイマー | フェンサーフェアリー | カーバンクル | 杖 | リノセウス;
 
 export const CardConstructorMap: Record<string, new (data: any) => BaseCardClass> = {
     'フェアリー': フェアリー,
@@ -297,7 +296,8 @@ export const CardConstructorMap: Record<string, new (data: any) => BaseCardClass
     'テイマー': フェアリーテイマー,
     'フェンサー': フェンサーフェアリー,
     'カバン': カーバンクル,
-    '杖': 杖
+    '杖': 杖,
+    'リノセウス': リノセウス
 };
 
 // JSONデータ（メソッドを持たないオブジェクト）をクラスインスタンスに変換する関数
